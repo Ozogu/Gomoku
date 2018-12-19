@@ -68,7 +68,7 @@ class Gomoku():
         # Creating board
         self.__board = []
         for size_x in range(self.__board_size):
-            self.board_x = []
+            self.__board_x = []
             for size_y in range(self.__board_size):
                 # Creating button
                 button = Button(self.__mainwindow,width=2,height=1,
@@ -77,8 +77,8 @@ class Gomoku():
                 # Place button to board
                 button.grid(row=size_y+1,column=size_x,sticky =N+W+E+S)
                 # Place button to to list
-                self.board_x.append(button)
-            self.__board.append(self.board_x)
+                self.__board_x.append(button)
+            self.__board.append(self.__board_x)
 
         self.__mainwindow.mainloop()
 
@@ -109,7 +109,7 @@ class Gomoku():
         Update playing player and turn label
         """
         self.__turn_counter += 1
-        # päivittää pelaajan
+        # Update player
         self.__player %=2
         self.__player += 1
         self.__status["text"] = "Player {}".format\

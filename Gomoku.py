@@ -1,251 +1,232 @@
-"""
-Gokomu.
-Kahden pelaajan ristinolla, tarkoituksena saada 5 suora.
-https://en.wikipedia.org/wiki/Gomoku
-"""
-
 from tkinter import *
 from tkinter.messagebox import showerror
 
-class Laudankoko():
+class BoardSize():
     def __init__(self):
-        self.onnistuiko = False
-        # Alustetaan ikkuna
-        self.__ikkuna = Tk()
+        self.success = False
+        # Init window
+        self.__window = Tk()
 
-        # alustetaan kentät
-        self.__ikkuna.title("Laudan määrittäminen")
-        self.__kysymyslabel = Label(self.__ikkuna,
-                                    text = "Kuinka suuri lauta tehdään?")
-        self.__suuruusentry = Entry(self.__ikkuna)
-        self.__okbutton = Button(self.__ikkuna,
-                                 text="Ok", command= self.ota_koko)
+        # Init buttons
+        self.__window.title("Board settings")
+        self.__label = Label(self.__window,
+                                    text = "Size of board?")
+        self.__size = Entry(self.__window)
+        self.__ok_button = Button(self.__window,
+                                 text="Ok", command= self.take_size)
 
-        # alustetaan entry teksti
-        self.__suuruusentry.insert(0,"20")
+        # Default size
+        self.__size.insert(0,"20")
 
-        # paikat
-        self.__kysymyslabel.grid(row=0,column=0)
-        self.__suuruusentry.grid(row=1,column=0)
-        self.__okbutton.grid(row=2,column=0)
+        # Places
+        self.__label.grid(row=0,column=0)
+        self.__size.grid(row=1,column=0)
+        self.__ok_button.grid(row=2,column=0)
 
-        # pikanäppäimet
-        self.__suuruusentry.bind("<Return>",self.ota_koko)
+        # Hotkeys
+        self.__size.bind("<Return>",self.take_size)
 
-        self.__ikkuna.mainloop()
+        self.__window.mainloop()
 
-    def ota_koko(self,event=""):
+    def take_size(self,event=""):
         """
-        Ottaa entrystä koon vastaan, ja palauttaa sen pääohjelmalle
-        :param event: pikanäppäimelle
+        Take and return board size from entry
+        :param event: For hotkey
         """
-        #testaus
         try:
-            # koko muuttuja joka palautetaan pää ohjelmalle
-            self.koko = int(self.__suuruusentry.get())
+            # size that is returned
+            self.size = int(self.__size.get())
 
-            if self.koko in range(10,36):
-                self.__ikkuna.destroy()
-                self.onnistuiko = True
-            else: raise
+            if self.size in range(10,36):
+                self.__window.destroy()
+                self.success = True
+            else:
+                raise Exception("Size out of bounds")
         except:
-            # error ponnahdus
-             showerror("VIRHE!","Virheellinen laudankoko! (Anna kokonaislukuna"
-                                " väliltä 10-35)")
+             showerror("Error!","Size must be integer between 10-35")
 
-class Ristinolla():
-    def __init__(self,koko):
-        # Pääikkuna
-        self.__pääikkuna = Tk()
-        self.__pääikkuna.title("Ristinolla")
+class Gomoku():
+    def __init__(self,size):
+        self.__mainwindow = Tk()
+        self.__mainwindow.title("Gomoku")
 
-        # Muuttujia
-        self.__laudankoko = koko
-        self.__vuorolaskuri = 0
-        self.__pelaaja = 1
+        # variables
+        self.__board_size = size
+        self.__turn_counter = 0
+        self.__player = 1
 
-        # Labelien luonti
-        self.__tilannelabel = Label(self.__pääikkuna,text="Pelaajan {} vuoro"
-                                    .format(self.__pelaaja))
-        self.__vuorolaskurilabel = Label(self.__pääikkuna,text=
-                            "{}. siirtoa tehty".format(self.__vuorolaskuri))
+        # Creating labels
+        self.__status = Label(self.__mainwindow,text="Player {}"
+                                    .format(self.__player))
+        self.__turn_counter_label = Label(self.__mainwindow,text=
+                            "{}. Turns taken".format(self.__turn_counter))
 
-        # Labelien asettaminen
-        self.__tilannelabel.grid(row=0,column=0,columnspan=4)
-        self.__vuorolaskurilabel.grid(row=0,column=4,columnspan=4)
+        # Placing label
+        self.__status.grid(row=0,column=0,columnspan=4)
+        self.__turn_counter_label.grid(row=0,column=4,columnspan=4)
 
-        # Pelilaudan luonti
-        # Pelilauta on koostuu y suuntaa kuvaavasta listasta ja x suuntaa
-        # kuvaavasta lsitasta, missä x listassa on nappuloita.
-        self.__pelilauta = []
-        for kokox in range(self.__laudankoko):
-            self.__lautax = []
-            for kokoy in range(self.__laudankoko):
-                # Nappula luodaan
-                merkkibutton = Button(self.__pääikkuna,width=2,height=1,
-                                      command =(lambda y=kokoy,x=kokox:
-                                                self.tee_vuoro(x,y)))
-                # Nappula sijoitetaan ikkunaan
-                merkkibutton.grid(row=kokoy+1,column=kokox,sticky =N+W+E+S)
-                # Nappula tallennetaan x suuntaa kuvaavaan listaan
-                self.__lautax.append(merkkibutton)
-            self.__pelilauta.append(self.__lautax)
+        # Creating board
+        self.__board = []
+        for size_x in range(self.__board_size):
+            self.board_x = []
+            for size_y in range(self.__board_size):
+                # Creating button
+                button = Button(self.__mainwindow,width=2,height=1,
+                                      command =(lambda y=size_y,x=size_x:
+                                                self.take_turn(x,y)))
+                # Place button to board
+                button.grid(row=size_y+1,column=size_x,sticky =N+W+E+S)
+                # Place button to to list
+                self.board_x.append(button)
+            self.__board.append(self.board_x)
 
-        self.__pääikkuna.mainloop()
+        self.__mainwindow.mainloop()
 
-    def tee_vuoro(self,x,y):
+    def take_turn(self,x,y):
         """
-        funktio suorittaa vuoro toimenpiteet eli laittaa nappiin X, tai O
-        lukitsee napin ja antaa tietoa eteenpäin
-        :param x: nappulan x koordinaatti
-        :param y: nappulan y koordinaatti
-        :return:
+        Places x or o, locks the button and passes the information
+        :param x: X coordinate
+        :param y: y coordinate
+        :return: None
         """
-        #suorittaa pelaajan 1 vuoron
-        if self.__pelaaja == 1:
-            self.__pelilauta[x][y].config(state = DISABLED,
+        # Take player 1 turn
+        if self.__player == 1:
+            self.__board[x][y].config(state = DISABLED,
                                           background="lightblue",text="X")
-            # tarkistaa voittoa ja sen löytyessä lopettaa seuraavat vaiheet
-            if self.voitontarkistu("lightblue",[x,y]): return
-        # suorittaa pelaajan 2 vuoron
-        elif self.__pelaaja == 2:
-            self.__pelilauta[x][y].config(state = DISABLED,
+            # Return if win condition met
+            if self.check_win_condition("lightblue",[x,y]): return
+        # Take player 2 turn
+        elif self.__player == 2:
+            self.__board[x][y].config(state = DISABLED,
                                           background="lightcoral",text="O")
-            if self.voitontarkistu("lightcoral",[x,y]): return
-        # päivittää nappulan näytölle
-        self.__pelilauta[x][y].update()
-        self.päätä_vuoro()
+            if self.check_win_condition("lightcoral",[x,y]): return
+        # Update board
+        self.__board[x][y].update()
+        self.end_turn()
 
-    def päätä_vuoro(self):
+    def end_turn(self):
         """
-        Funktio päivittää labeleiden tekstit vuorossa olevan pelaajan ja vuoron
+        Update playing player and turn label
         """
-        self.__vuorolaskuri += 1
+        self.__turn_counter += 1
         # päivittää pelaajan
-        self.__pelaaja %=2
-        self.__pelaaja += 1
-        self.__tilannelabel["text"] = "Pelaajan {} vuoro".format\
-            (self.__pelaaja)
-        self.__vuorolaskurilabel["text"]= "{}. siirtoa tehty".format\
-            (self.__vuorolaskuri)
-        self.__vuorolaskurilabel.update()
+        self.__player %=2
+        self.__player += 1
+        self.__status["text"] = "Player {}".format\
+            (self.__player)
+        self.__turn_counter_label["text"]= "{}. Turns taken".format\
+            (self.__turn_counter)
+        self.__turn_counter_label.update()
 
-    def voitontarkistu(self,merkki,koordinaatti):
+    def check_win_condition(self,token,coordinate):
         """
-        Funktio tarkistaa ratkaiseeko siirto pelin. Funktio antaa neljä
-        vektoria: ylös oikea ja yläviistot eteenpäin seuraaville funktioille
-        pohdittavaksi
-        :param merkki: ruudun väri
-        :param koordinaatti: lista missä koordinaatti
-        :return: True jos voittaja löytyi
+        Check if win condition met.
+        Check horizontal, vertical, and diagonal vectors for win conditions
+        :param token: Player token
+        :param coordinate: Coordinate of the button
+        :return: True if win condition met
         """
-        # jos mahdollista löytää  voittaja
-        if self.__vuorolaskuri >= 8:
-            # vektorit sivulle ja viistoon
-            vek1=(1,0)
-            vek2=(1,1)
+        # Check if it's even possible to win yet
+        if self.__turn_counter >= 8:
+            # Up and up right vectors
+            vec1=(1,0)
+            vec2=(1,1)
 
-            for suunta in range(2):
-                if True == self.tarkista(merkki,vek1,koordinaatti):
-                    self.voitonjulistus()
+            # Loop both directions of vector
+            for _ in range(2):
+                if True == self.check_direction(token,vec1,coordinate):
+                    self.declare_winner()
                     return True
-                if True == self.tarkista(merkki,vek2,koordinaatti):
-                    self.voitonjulistus()
+                if True == self.check_direction(token,vec2,coordinate):
+                    self.declare_winner()
                     return True
 
-                # Vektorit käännetään osoittamaan eri suuntiin
-                vek1 = -vek1[1], vek1[0]
-                vek2 = -vek2[1], vek2[0]
+                # Turn vector directions
+                vec1 = -vec1[1], vec1[0]
+                vec2 = -vec2[1], vec2[0]
 
-        # tarkistaa tasapelin
-        if self.__vuorolaskuri+1 == self.__laudankoko**2:
-            self.__vuorolaskurilabel["text"] = "Tasapeli!"
-            self.__tilannelabel["text"] = ""
-            self.__tilannelabel.update()
-            self.__vuorolaskurilabel.update()
+        # Check for draw
+        if self.__turn_counter+1 == self.__board_size**2:
+            self.__turn_counter_label["text"] = "Draw!"
+            self.__status["text"] = ""
+            self.__status.update()
+            self.__turn_counter_label.update()
             showerror("Tasapeli","tasapeli!")
             return True
 
-    def tarkista(self, merkki,vektori ,koord):
+    def check_direction(self, token, vector, coordinate):
         """
-        Tarkista funktio ottaa vektorin ja tekee sille vasta vektorin.
-        Antaa suuntafunktiolle vektorin ja sen vastavektorin joka sitten
-        palauttaa osumien määrän. Jos osumia on riittävästi niin palauttaa True
-        :param merkki: ruudun väri
-        :param vektori: suunta vektori mitä mikä annetaan eteenpäin
-        :param koord: napin koordinaatti
-        :return: True jos löytyi 5 suora.
+        Takes a vector, creates inverse vector and gives both to direction function.
+        :param token: Player token
+        :param vector: direction vector which will be passed forward
+        :param coordinate: Coordinate of the button
+        :return: True if 5-straight found.
         """
-        vastavektori = -vektori[0], -vektori[1]
-        # lätee liikkumaan vektorin suuntaan, osumia 1.
-        osumia = self.suunta(merkki,vektori,1,koord)
-        if osumia == 5:
+        inverse_vector = -vector[0], -vector[1]
+        # Calculate hits to direction
+        hits = self.direction(token,vector,1,coordinate)
+        if hits == 5:
             return True
-        # päähän tultuaan palaa aloituspisteeseen ja lähtee laskemaan eri
-        # suuntaan, osumia tälläkertaa ensimmäisestä suunnasta löytynyt määrä
-        osumia = self.suunta(merkki,vastavektori,osumia,koord)
-        if osumia == 5:
+        # After reaching the end, add hits towards the opposite direction
+        hits = self.direction(token,inverse_vector,hits,coordinate)
+        if hits == 5:
             return True
 
-    def suunta(self, merkki, vektori, osumia,koord):
+    def direction(self, token, vector, hits, coordinate):
         """
-        Suunta funktio laskee vektorin suunnassa samanväristen nappuloiden
-        määrän.
-        :param merkki: napin väri
-        :param vektori: suunta vektori
-        :param osumia:  osumien määrä
-        :param koord: napin koordinaatti
+        Calculate hits towards this direction
+        :param token: Player token
+        :param vector: direction vector
+        :param hits:  Hits so far
+        :param coordinate: Coordinate of the button
         :return:
         """
         try:
-            # vektorin päässä oleva nappi
-            uusix = koord[0]+vektori[0]
-            uusiy = koord[1]+vektori[1]
-            uusikoord = [uusix,uusiy]
-            # tarkistetaan merkki ja tallennetaan se uutena merkkinä
-            if self.__pelilauta[uusix][uusiy]["background"] == "lightcoral":
-                uusimerkki = "lightcoral"
+            # Button at the end to the vector
+            next_x = coordinate[0]+vector[0]
+            next_y = coordinate[1]+vector[1]
+            next_coordinate = [next_x,next_y]
+            # tarkistetaan token ja tallennetaan se uutena merkkinä
+            if self.__board[next_x][next_y]["background"] == "lightcoral":
+                next_token = "lightcoral"
+            elif self.__board[next_x][next_y]["background"] == "lightblue":
+                next_token = "lightblue"
+            else:
+                next_token = None
 
-            elif self.__pelilauta[uusix][uusiy]["background"] == "lightblue":
-                uusimerkki = "lightblue"
-
-            else: uusimerkki = "tyhjä"
-
-            # Jos vektorin päässä oleva merkki on annettua vastaava
-            # niin lisätään osumiin 1 ja jatketaan seuraavaan koordinaattiin
-            if uusimerkki == merkki:
-                osumia = self.suunta(uusimerkki, vektori, osumia+1 ,uusikoord)
-            # palautetaan osumat
-            return osumia
+            # Add hit and continue if next token is of the players
+            if next_token == token:
+                hits = self.direction(next_token, vector, hits+1 ,next_coordinate)
+            # Else return hits
+            return hits
+        # Out of bounds
         except IndexError:
-            # jos vektorin pää on listan ulkona niin palautetaan osumat
-            return osumia
+            return hits
 
-    def voitonjulistus(self):
+    def declare_winner(self):
         """
-        Funktion tarkoitus popata voitto julistus muuttaa labeleiden tekstit.
-        Voittaja kunniaan
+        Pop up winner
         """
-        # Labelien määritys
-        self.__vuorolaskurilabel["text"] = "Pelaaja {} voitti!".format\
-            (self.__pelaaja)
-        self.__tilannelabel["text"] = ""
-        self.__tilannelabel.update()
+        # Update label
+        self.__turn_counter_label["text"] = "Player {} won!".format\
+            (self.__player)
+        self.__status["text"] = ""
+        self.__status.update()
 
-        # Napit poistetaan käytöstä, peli loppui.
-        for xnapit in range(len(self.__pelilauta)):
-            for ynapit in range(len(self.__pelilauta)):
-                self.__pelilauta[xnapit][ynapit].config(state=DISABLED)
-        self.__vuorolaskurilabel.update()
+        # Disable buttons
+        for x_buttons in range(len(self.__board)):
+            for y_buttons in range(len(self.__board)):
+                self.__board[x_buttons][y_buttons].config(state=DISABLED)
+        self.__turn_counter_label.update()
 
-        # popataan voittajan julistus
-        showerror("Voittaja","Pelaaja {} voitti pelin!".format
-        (self.__pelaaja))
+        # Declare winner
+        showerror("Winner","Player {} won!".format
+        (self.__player))
 
 def main():
-    laudan_koko = Laudankoko()
-    # Tämän ansiosta ei voi pelata sallittua laudankokoa suurempaa lautaa
-    if laudan_koko.onnistuiko == True:
-        Ristinolla(laudan_koko.koko)
+    board_size = BoardSize()
+    # Check if valid board size was gotten.
+    if board_size.success == True:
+        Gomoku(board_size.size)
 
 main()
